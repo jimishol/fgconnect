@@ -63,10 +63,24 @@ def translateToAirplane( fgData ):
   gs_flying = ground_speed > 40.0
   vs_flying = abs(vertical_speed) > 100.0
     
-  # Set ON_GROUND bit if altitude check passes and not flying by speed
+  # Set ON_GROUND bit (0x0001) if altitude check passes and not flying by speed
   if on_ground_alt and not (gs_flying or vs_flying):
     shortFlags |= 0x0001
   
+  # --- Dynamic Pause and Replay Bitmask Logic ---
+  # Pause check: /sim/freeze/master (boolean or "true"/"1" string)
+  freeze_val = fgData.get("freeze (simulation paused)", fgData.get("/sim/freeze/master", False))
+  if freeze_val is True or str(freeze_val).strip().lower() in ("true", "1"):
+    shortFlags |= 0x0080  # SIM_PAUSED
+
+  # Replay check: /sim/replay/replay-state (integer > 0 means active replay)
+  replay_val = fgData.get("replay (replay enabled)", fgData.get("/sim/replay/replay-state", 0))
+  try:
+    if int(replay_val) > 0:
+      shortFlags |= 0x0100  # SIM_REPLAY
+  except (ValueError, TypeError):
+    pass
+  # ----------------------------------------------
   # Extract title once for both helicopter check and dictionary  
   title = fgData["/sim/description"]  
 
@@ -104,7 +118,7 @@ def translateToAirplane( fgData ):
                  "trackTrueDeg"               : fgData["/orientation/true-heading-deg"],
                  "title"                      : fgData["/sim/description"],
                  "categoryByte"               : categoryByte,  
-                 "model" : fgData["/addons/by-id/com.slawekmikula.flightgear.LittleNavMap/aircraft-model"],
+                 "model"                      : fgData["/addons/by-id/com.slawekmikula.flightgear.LittleNavMap/aircraft-model"],
                  "reg"                        : fgData["/sim/multiplay/callsign"],
                  "type"                       : "",
                  "airline"                    : "",
