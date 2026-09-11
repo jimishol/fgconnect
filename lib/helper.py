@@ -7,6 +7,7 @@
 import pprint
 import math
 import os
+from datetime import datetime, timezone, timedelta
 
 earthRadiusKm = 6373.0
 
@@ -80,7 +81,26 @@ def translateToAirplane( fgData ):
       shortFlags |= 0x0100  # SIM_REPLAY
   except (ValueError, TypeError):
     pass
+
   # ----------------------------------------------
+  # --- Parse FlightGear Sim Time (Zulu) ---
+  gmt_str = str(fgData.get("/sim/time/gmt", "")).strip()
+  try:
+      # 1. Parse naive ISO string (YYYY-MM-DDTHH:MM:SS)
+      z_dt = datetime.fromisoformat(gmt_str)
+      # 2. Explicitly attach UTC timezone info for consistency
+      if z_dt.tzinfo is None:
+          z_dt = z_dt.replace(tzinfo=timezone.utc)
+  except (ValueError, TypeError):
+      z_dt = datetime.now(timezone.utc)
+  
+  zuluDateTime = (
+      z_dt.year, z_dt.month, z_dt.day,
+      z_dt.hour, z_dt.minute, z_dt.second,
+      z_dt.microsecond // 1000
+  )
+  # ----------------------------------------
+
   # Extract title once for both helicopter check and dictionary  
   title = fgData["/sim/description"]  
 
@@ -125,6 +145,7 @@ def translateToAirplane( fgData ):
                  "flightNr"                   : "",
                  "fromIdent"                  : "",
                  "toIdent"                    : "",
+                 "zuluDateTime"               : zuluDateTime,
                }
   return myAirplane
 
